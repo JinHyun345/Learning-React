@@ -1,60 +1,64 @@
-const express = require("express");
-const cors = require("cors");
-const db = require("./db");
-
+const express = require('express');
+const mysql = require('mysql2');
+const cors = require('cors');
 const app = express();
+const db = require('./db');
 const port = 5000;
 
-app.use(express.json()); /*얘가 JSON 형식의 request를 해석해주어서 request.body를 쓸 수 있으므로
-바디파서 안 깔아도 됨! */
+app.use(express.json());
 app.use(cors());
 
-app.post('/api/users', (request, response)=>{
-    const {name} = request.body; /*Destructuring : request.body에서 name만 뽑아오는 문법
-    const name = request.body.name;을 간결하게 쓴 거임. */
-    db.query('INSERT INTO users (name) VALUES (?)', [name], (err, results)=>{
-        if(err){
-            console.log("사용자 추가 오류:", err);
-            response.status(500).json({error:"데이터 추가하는중에 오류발생"})
-        }else{
-            response.json({id: results.insertId, name});
+app.delete('/user/:id', (req, res)=>{
+    const {id} = req.params;
+    db.query('DELETE FROM users WHERE id=?', [id], (err, results)=>{
+        if(err) {
+            console.log('DB users 삭제 오류');
+            res.status(500).json({error:"데이터 삭제하는 중 오류"})
+        }
+        else{
+            res.send(results);
         }
     });
-});
-app.put('/api/users/:id', (request, response)=>{
-    const {id} = request.params;
-    const {name} = request.body;
-    db.query('UPDATE users SET name=? WHERE id=?', [name, id], (err, results)=>{
+})
+
+app.put('/user', (req, res)=>{
+    const {id, name, birthdate} = req.body;
+    db.query(`UPDATE users SET name=?, birthdate=? WHERE id=?`,[name, birthdate, id], (err, results)=>{
         if(err){
-            console.log("사용자 수정 오류:", err);
-            response.status(500).json({error:"데이터 수정하는중에 오류발생"})
+            console.log('DB users 수정하기 오류');
+            res.status(500).json({error:"데이터 수정하는 중 오류"})
         }else{
-            response.send("수정 완료");
+            res.json(results);
+
         }
     });
-});
-app.delete('/api/users/:id', (request, response)=>{
-    const {id} = request.params;
-    db.query('DELETE FROM users where id=?', [id], (err, results)=>{
+})
+
+app.post('/user', (req, res)=>{
+    const {name, birthdate} = req.body;
+    db.query(`INSERT INTO users (name, birthdate) VALUES (?,STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ'))`,[name, birthdate], (err, results)=>{
         if(err){
-            console.log("사용자 삭제 오류:", err);
-            response.status(500).json({error:"데이터 삭제하는중에 오류발생"})
+            console.log('DB users 추가하기 오류');
+            res.status(500).json({error:"데이터 가져오는 중 오류"})
         }else{
-            response.json("삭제 완료");
+            res.json(results);
+
         }
     });
-});
-app.get('/api/users', (request, response)=>{
-    db.query('SELECT * FROM users', (err, results)=>{
+})
+
+app.get('/user', (req, res)=>{
+    db.query(`SELECT id, name, DATE_FORMAT(birthdate, '%Y-%m-%d') AS birthdate FROM users`, (err, results)=>{
         if(err){
-            console.log("사용자 조회 오류:", err);
-            response.status(500).json({error:"데이터 가져오는중에 오류발생"})
+            console.log('DB users 불러오기 오류');
+            res.status(500).json({error:"데이터 가져오는 중 오류"})
         }else{
-            response.json(results);
+            res.json(results);
+
         }
     });
-});
+})
 
 app.listen(port, ()=>{
-    console.log(`Server is running at http://localhost:${port}`);
+    console.log(`서버가 포트 ${port}번에서 돌아가고 있음`);
 })
